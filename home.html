@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Chatbot</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 420px;
+            height: 90vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #3575ff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .msg {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .user-msg {
+            background: #3575ff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+
+        .bot-msg {
+            background: #e9ecf3;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+
+        .input-area {
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            background: #f2f2f2;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        .input-area button {
+            padding: 10px 16px;
+            background: #3575ff;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .typing {
+            font-size: 13px;
+            color: #666;
+            padding-left: 5px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        Healthcare Triage Assistant
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <!-- Messages appear here dynamically -->
+    </div>
+
+    <div class="input-area">
+        <input id="userInput" type="text" placeholder="Type your symptoms..." autocomplete="off">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const chatBox = document.getElementById("chatBox");
+    const userInput = document.getElementById("userInput");
+
+    function addMessage(text, sender) {
+        const msg = document.createElement("div");
+        msg.classList.add("msg");
+
+        if (sender === "user") {
+            msg.classList.add("user-msg");
+        } else {
+            msg.classList.add("bot-msg");
+        }
+
+        msg.innerText = text;
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        // Show user message
+        addMessage(text, "user");
+
+        // Clear input
+        userInput.value = "";
+
+        // Typing indicator
+        const typing = document.createElement("div");
+        typing.classList.add("msg", "bot-msg");
+        typing.innerHTML = "<span class='typing'>Assistant is typing...</span>";
+        chatBox.appendChild(typing);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Send request to backend
+        const formData = new FormData();
+        formData.append("prompt", text);
+
+        let response = await fetch("/llm", {
+            method: "POST",
+            body: formData
+        });
+
+        let botReply = await response.text();
+
+        // Remove typing indicator
+        typing.remove();
+
+        // Add bot response
+        addMessage(botReply, "bot");
+    }
+
+    // Press Enter to send
+    userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
+</script>
+
+</body>
+</html>
