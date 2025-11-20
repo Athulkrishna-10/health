@@ -2,180 +2,301 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healthcare Chatbot</title>
+    <title>Medical Triage Assistant</title>
 
     <style>
         body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f7fb;
-            height: 100vh;
+            background: linear-gradient(135deg, #d7e9ff, #f0f7ff);
+            font-family: "Segoe UI", Arial, sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
+            padding-top: 40px;
         }
 
-        .chat-container {
-            width: 420px;
-            height: 90vh;
+        #chat-container {
+            width: 480px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            border: 1px solid #bcd7ff;
         }
 
-        .chat-header {
-            background: #3575ff;
-            color: white;
-            padding: 15px;
+        #header {
+            background: linear-gradient(90deg, #0A84FF, #4ca9ff);
+            padding: 18px;
             text-align: center;
-            font-size: 18px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
 
-        .chat-box {
-            flex: 1;
-            padding: 15px;
+        #messages {
+            padding: 18px;
+            height: 520px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
+            background: #f2f7ff;
         }
 
-        .msg {
-            max-width: 75%;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 15px;
-            line-height: 1.4;
+        .bubble {
+            max-width: 80%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 16px;
+            background: #eef5ff;
+            white-space: pre-line;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
         }
 
-        .user-msg {
-            background: #3575ff;
-            color: white;
+        .user {
+            background: #d6e6ff;
             align-self: flex-end;
-            border-bottom-right-radius: 0;
         }
 
-        .bot-msg {
-            background: #e9ecf3;
+        .bot {
+            background: #eef5ff;
             align-self: flex-start;
-            border-bottom-left-radius: 0;
+            border: 1px solid #d1e1ff;
         }
 
-        .input-area {
-            padding: 10px;
+        .audio-btn {
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: #0A84FF;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        #input-area {
             display: flex;
+            padding: 14px;
             gap: 10px;
-            background: #f2f2f2;
+            border-top: 1px solid #c8ddff;
         }
 
-        .input-area input {
+        #promptInput {
             flex: 1;
             padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 15px;
+            border-radius: 12px;
+            border: 1px solid #b4ceff;
+            font-size: 16px;
         }
 
-        .input-area button {
-            padding: 10px 16px;
-            background: #3575ff;
-            border: none;
+        #sendBtn, #recordBtn {
+            padding: 10px 18px;
+            background: #0A84FF;
             color: white;
-            border-radius: 8px;
+            border: none;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 15px;
         }
 
-        .typing {
-            font-size: 13px;
-            color: #666;
-            padding-left: 5px;
+        #recordBtn.recording {
+            background: red !important;
         }
-
     </style>
 </head>
 
 <body>
 
-<div class="chat-container">
-    <div class="chat-header">
-        Healthcare Triage Assistant
-    </div>
+<div id="chat-container">
+    <div id="header">Medical Triage Assistant</div>
 
-    <div class="chat-box" id="chatBox">
-        <!-- Messages appear here dynamically -->
-    </div>
+    <div id="messages"></div>
 
-    <div class="input-area">
-        <input id="userInput" type="text" placeholder="Type your symptoms..." autocomplete="off">
-        <button onclick="sendMessage()">Send</button>
+    <div id="input-area">
+        <button id="recordBtn">🎤</button>
+        <input id="promptInput" placeholder="Describe your symptoms...">
+        <button id="sendBtn">Send</button>
     </div>
 </div>
 
 <script>
-    const chatBox = document.getElementById("chatBox");
-    const userInput = document.getElementById("userInput");
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
 
-    function addMessage(text, sender) {
-        const msg = document.createElement("div");
-        msg.classList.add("msg");
+const messagesBox = document.getElementById("messages");
 
-        if (sender === "user") {
-            msg.classList.add("user-msg");
-        } else {
-            msg.classList.add("bot-msg");
-        }
+/* Clean LLM output */
+function formatBotText(text) {
+    return text
+        .replace("(type: follow_up)", "")
+        .replace("(type: final_recommendation)", "")
+        .replace(/\\n/g, " ")
+        .replace(/\n/g, " ")
+        .replace(/Q:\s*/g, "")
+        .replace(/["]/g, "")
+        .trim();
+}
 
-        msg.innerText = text;
-        chatBox.appendChild(msg);
-        chatBox.scrollTop = chatBox.scrollHeight;
+/* Add message bubble */
+function addMessage(text, type, withAudio = false) {
+    const bubble = document.createElement("div");
+    bubble.classList.add("bubble", type);
+    bubble.innerText = text;
+
+    if (type === "bot" && withAudio) {
+        const audioBtn = document.createElement("button");
+        audioBtn.classList.add("audio-btn");
+        audioBtn.innerText = "🔊 Hear Voice";
+
+        audioBtn.onclick = async () => {
+            const formData = new FormData();
+            formData.append("text", text);
+
+            const res = await fetch("/text_speech", {
+                method: "POST",
+                body: formData
+            });
+
+            const blob = await res.blob();
+            new Audio(URL.createObjectURL(blob)).play();
+        };
+
+        bubble.appendChild(document.createElement("br"));
+        bubble.appendChild(audioBtn);
     }
 
-    async function sendMessage() {
-        const text = userInput.value.trim();
-        if (!text) return;
+    messagesBox.appendChild(bubble);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+}
 
-        // Show user message
-        addMessage(text, "user");
+/* RECORD VOICE */
+document.getElementById("recordBtn").onclick = async () => {
+    const btn = document.getElementById("recordBtn");
 
-        // Clear input
-        userInput.value = "";
+    if (!isRecording) {
+        audioChunks = [];
 
-        // Typing indicator
-        const typing = document.createElement("div");
-        typing.classList.add("msg", "bot-msg");
-        typing.innerHTML = "<span class='typing'>Assistant is typing...</span>";
-        chatBox.appendChild(typing);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
 
-        // Send request to backend
-        const formData = new FormData();
-        formData.append("prompt", text);
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = sendAudioToBackend;
 
-        let response = await fetch("/llm", {
-            method: "POST",
-            body: formData
-        });
+        mediaRecorder.start();
+        isRecording = true;
+        btn.classList.add("recording");
+        btn.innerText = "⏹ Stop";
 
-        let botReply = await response.text();
+    } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.classList.remove("recording");
+        btn.innerText = "🎤";
+        addMessage("🎙 Processing your voice...", "bot");
+    }
+};
 
-        // Remove typing indicator
-        typing.remove();
+/* Convert WEBM → WAV */
+function audioBufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const samples = buffer.length;
 
-        // Add bot response
-        addMessage(botReply, "bot");
+    const blockAlign = numChannels * 2;
+    const byteRate = sampleRate * blockAlign;
+
+    const dataSize = samples * blockAlign;
+    const bufferSize = 44 + dataSize;
+
+    const arrayBuffer = new ArrayBuffer(bufferSize);
+    const view = new DataView(arrayBuffer);
+
+    function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
     }
 
-    // Press Enter to send
-    userInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            sendMessage();
+    let offset = 0;
+
+    writeString(offset, 'RIFF'); offset += 4;
+    view.setUint32(offset, bufferSize - 8, true); offset += 4;
+    writeString(offset, 'WAVE'); offset += 4;
+
+    writeString(offset, 'fmt '); offset += 4;
+    view.setUint32(offset, 16, true); offset += 4;
+    view.setUint16(offset, 1, true); offset += 2;
+    view.setUint16(offset, numChannels, true); offset += 2;
+    view.setUint32(offset, sampleRate, true); offset += 4;
+    view.setUint32(offset, byteRate, true); offset += 4;
+    view.setUint16(offset, blockAlign, true); offset += 2;
+    view.setUint16(offset, 16, true); offset += 2;
+
+    writeString(offset, 'data'); offset += 4;
+    view.setUint32(offset, dataSize, true); offset += 4;
+
+    let pos = offset;
+    for (let i = 0; i < samples; i++) {
+        for (let ch = 0; ch < numChannels; ch++) {
+            const sample = buffer.getChannelData(ch)[i];
+            const val = Math.max(-1, Math.min(1, sample));
+            view.setInt16(pos, val * 0x7FFF, true);
+            pos += 2;
         }
+    }
+
+    return arrayBuffer;
+}
+
+/* Send audio to backend */
+async function sendAudioToBackend() {
+    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioCtx = new AudioContext();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const wavBuffer = audioBufferToWav(audioBuffer);
+    const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
+
+    const formData = new FormData();
+    formData.append("voice", wavBlob, "audio.wav");
+
+    const res = await fetch("/speech", {
+        method: "POST",
+        body: formData
     });
+
+    const data = await res.json();
+
+    addMessage("🗣 " + data[1], "user");
+
+    let clean = formatBotText(data[0]);
+    addMessage(clean, "bot", true);
+}
+
+/* Send text */
+document.getElementById("sendBtn").onclick = async () => {
+    const text = document.getElementById("promptInput").value.trim();
+    if (!text) return;
+
+    addMessage(text, "user");
+
+    const formData = new FormData();
+    formData.append("prompt", text);
+
+    const res = await fetch("/llm", { method: "POST", body: formData });
+    let reply = await res.text();
+
+    let clean = formatBotText(reply);
+    addMessage(clean, "bot", true);
+
+    document.getElementById("promptInput").value = "";
+};
 </script>
 
 </body>
