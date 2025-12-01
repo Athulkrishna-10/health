@@ -2,301 +2,265 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Medical Triage Assistant</title>
+    <title>Medical Bot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
         body {
-            background: linear-gradient(135deg, #d7e9ff, #f0f7ff);
-            font-family: "Segoe UI", Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            padding-top: 40px;
+            margin: 0;
+            background: #eef2f7;
+            font-family: Arial, sans-serif;
         }
 
-        #chat-container {
-            width: 480px;
+        .chat-wrapper {
+            width: 100%;
+            max-width: 450px;
+            margin: auto;
+            height: 100vh;
             background: white;
-            border-radius: 22px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #bcd7ff;
         }
 
-        #header {
-            background: linear-gradient(90deg, #0A84FF, #4ca9ff);
-            padding: 18px;
-            text-align: center;
-            color: white;
-            font-size: 22px;
+        /* Header */
+        .header {
+            background: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .header img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .header .title {
+            font-size: 18px;
             font-weight: bold;
-            letter-spacing: 1px;
         }
 
-        #messages {
-            padding: 18px;
-            height: 520px;
+        .header .status {
+            font-size: 13px;
+            color: green;
+        }
+
+        /* Messages area */
+        .messages {
+            flex: 1;
+            padding: 15px;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            background: #f2f7ff;
+            background: #f4f6fb;
         }
 
-        .bubble {
-            max-width: 80%;
-            padding: 14px 18px;
-            border-radius: 18px;
-            line-height: 1.5;
-            font-size: 16px;
-            background: #eef5ff;
-            white-space: pre-line;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        .msg {
+            max-width: 75%;
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 14px;
+            white-space: pre-wrap;
+            position: relative;
+            line-height: 1.4;
         }
 
         .user {
-            background: #d6e6ff;
-            align-self: flex-end;
+            background: #0066ff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 3px;
         }
 
         .bot {
-            background: #eef5ff;
-            align-self: flex-start;
-            border: 1px solid #d1e1ff;
+            background: white;
+            border: 1px solid #ddd;
+            border-bottom-left-radius: 3px;
         }
 
-        .audio-btn {
-            margin-top: 10px;
-            padding: 8px 14px;
-            background: #0A84FF;
-            color: white;
-            border: none;
-            border-radius: 12px;
+        .replay-btn {
+            margin-left: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 20px;
+            vertical-align: middle;
         }
 
-        #input-area {
+        /* Input bar */
+        .input-bar {
+            padding: 12px;
             display: flex;
-            padding: 14px;
-            gap: 10px;
-            border-top: 1px solid #c8ddff;
+            background: white;
+            border-top: 1px solid #ddd;
         }
 
-        #promptInput {
+        #textInput {
             flex: 1;
             padding: 12px;
-            border-radius: 12px;
-            border: 1px solid #b4ceff;
-            font-size: 16px;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            outline: none;
         }
 
-        #sendBtn, #recordBtn {
-            padding: 10px 18px;
-            background: #0A84FF;
-            color: white;
+        .send-btn, .mic-btn {
+            width: 48px;
+            height: 48px;
+            margin-left: 10px;
+            border-radius: 50%;
             border: none;
-            border-radius: 12px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 20px;
+            color: white;
         }
 
-        #recordBtn.recording {
-            background: red !important;
+        .send-btn {
+            background: #0066ff;
+        }
+
+        .mic-btn {
+            background: #ff3b30;
+        }
+
+        .mic-btn.recording {
+            background: #c62828;
+        }
+
+        #botAudio {
+            display: none;
         }
     </style>
 </head>
-
 <body>
 
-<div id="chat-container">
-    <div id="header">Medical Triage Assistant</div>
+<div class="chat-wrapper">
 
-    <div id="messages"></div>
-
-    <div id="input-area">
-        <button id="recordBtn">🎤</button>
-        <input id="promptInput" placeholder="Describe your symptoms...">
-        <button id="sendBtn">Send</button>
+    <!-- Header -->
+    <div class="header">
+        <img src="https://i.imgur.com/PrLkN9L.png">
+        <div>
+            <div class="title">Medical Bot</div>
+            <div class="status">Online</div>
+        </div>
     </div>
+
+    <!-- Chat Area -->
+    <div class="messages" id="messages"></div>
+
+    <!-- Input bar -->
+    <div class="input-bar">
+        <input id="textInput" type="text" placeholder="Type your message...">
+        <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+        <button class="send-btn" onclick="sendText()">➤</button>
+    </div>
+
+    <audio id="botAudio"></audio>
 </div>
 
 <script>
+let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
-let isRecording = false;
 
-const messagesBox = document.getElementById("messages");
-
-/* Clean LLM output */
-function formatBotText(text) {
-    return text
-        .replace("(type: follow_up)", "")
-        .replace("(type: final_recommendation)", "")
-        .replace(/\\n/g, " ")
-        .replace(/\n/g, " ")
-        .replace(/Q:\s*/g, "")
-        .replace(/["]/g, "")
-        .trim();
+function scrollToBottom() {
+    const box = document.getElementById("messages");
+    box.scrollTop = box.scrollHeight;
 }
 
-/* Add message bubble */
-function addMessage(text, type, withAudio = false) {
-    const bubble = document.createElement("div");
-    bubble.classList.add("bubble", type);
-    bubble.innerText = text;
-
-    if (type === "bot" && withAudio) {
-        const audioBtn = document.createElement("button");
-        audioBtn.classList.add("audio-btn");
-        audioBtn.innerText = "🔊 Hear Voice";
-
-        audioBtn.onclick = async () => {
-            const formData = new FormData();
-            formData.append("text", text);
-
-            const res = await fetch("/text_speech", {
-                method: "POST",
-                body: formData
-            });
-
-            const blob = await res.blob();
-            new Audio(URL.createObjectURL(blob)).play();
-        };
-
-        bubble.appendChild(document.createElement("br"));
-        bubble.appendChild(audioBtn);
-    }
-
-    messagesBox.appendChild(bubble);
-    messagesBox.scrollTop = messagesBox.scrollHeight;
+function addUserMessage(text) {
+    const div = document.createElement("div");
+    div.className = "msg user";
+    div.innerText = text;
+    document.getElementById("messages").appendChild(div);
+    scrollToBottom();
 }
 
-/* RECORD VOICE */
-document.getElementById("recordBtn").onclick = async () => {
-    const btn = document.getElementById("recordBtn");
+function addBotMessage(text) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "msg bot";
+    wrapper.innerText = text;
+
+    const replay = document.createElement("span");
+    replay.className = "replay-btn";
+    replay.innerHTML = "🔊";
+    replay.onclick = () => playBotAudio();
+
+    wrapper.appendChild(replay);
+
+    document.getElementById("messages").appendChild(wrapper);
+    scrollToBottom();
+}
+
+async function sendText() {
+    const input = document.getElementById("textInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addUserMessage(text);
+    input.value = "";
+
+    const form = new FormData();
+    form.append("prompt", text);
+
+    const res = await fetch("/model", {
+        method: "POST",
+        body: form
+    });
+
+    const reply = await res.text();
+    addBotMessage(reply);
+    playBotAudio();
+}
+
+async function toggleRecording() {
+    const micBtn = document.getElementById("micBtn");
 
     if (!isRecording) {
-        audioChunks = [];
-
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
-
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = sendAudioToBackend;
-
         mediaRecorder.start();
         isRecording = true;
-        btn.classList.add("recording");
-        btn.innerText = "⏹ Stop";
+        micBtn.classList.add("recording");
+        audioChunks = [];
 
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(audioChunks, { type: "audio/mp3" });
+            sendVoice(blob);
+        };
     } else {
         mediaRecorder.stop();
         isRecording = false;
-        btn.classList.remove("recording");
-        btn.innerText = "🎤";
-        addMessage("🎙 Processing your voice...", "bot");
+        micBtn.classList.remove("recording");
     }
-};
-
-/* Convert WEBM → WAV */
-function audioBufferToWav(buffer) {
-    const numChannels = buffer.numberOfChannels;
-    const sampleRate = buffer.sampleRate;
-    const samples = buffer.length;
-
-    const blockAlign = numChannels * 2;
-    const byteRate = sampleRate * blockAlign;
-
-    const dataSize = samples * blockAlign;
-    const bufferSize = 44 + dataSize;
-
-    const arrayBuffer = new ArrayBuffer(bufferSize);
-    const view = new DataView(arrayBuffer);
-
-    function writeString(offset, string) {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
-    }
-
-    let offset = 0;
-
-    writeString(offset, 'RIFF'); offset += 4;
-    view.setUint32(offset, bufferSize - 8, true); offset += 4;
-    writeString(offset, 'WAVE'); offset += 4;
-
-    writeString(offset, 'fmt '); offset += 4;
-    view.setUint32(offset, 16, true); offset += 4;
-    view.setUint16(offset, 1, true); offset += 2;
-    view.setUint16(offset, numChannels, true); offset += 2;
-    view.setUint32(offset, sampleRate, true); offset += 4;
-    view.setUint32(offset, byteRate, true); offset += 4;
-    view.setUint16(offset, blockAlign, true); offset += 2;
-    view.setUint16(offset, 16, true); offset += 2;
-
-    writeString(offset, 'data'); offset += 4;
-    view.setUint32(offset, dataSize, true); offset += 4;
-
-    let pos = offset;
-    for (let i = 0; i < samples; i++) {
-        for (let ch = 0; ch < numChannels; ch++) {
-            const sample = buffer.getChannelData(ch)[i];
-            const val = Math.max(-1, Math.min(1, sample));
-            view.setInt16(pos, val * 0x7FFF, true);
-            pos += 2;
-        }
-    }
-
-    return arrayBuffer;
 }
 
-/* Send audio to backend */
-async function sendAudioToBackend() {
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+async function sendVoice(blob) {
+    const form = new FormData();
+    form.append("voice", blob, "voice.mp3");
 
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioCtx = new AudioContext();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
-    const wavBuffer = audioBufferToWav(audioBuffer);
-    const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
-
-    const formData = new FormData();
-    formData.append("voice", wavBlob, "audio.wav");
-
-    const res = await fetch("/speech", {
-        method: "POST",
-        body: formData
-    });
-
+    const res = await fetch("/speech", { method: "POST", body: form });
     const data = await res.json();
 
-    addMessage("🗣 " + data[1], "user");
+    // Only show user message (transcribed text)
+    addUserMessage(data.transcription);
 
-    let clean = formatBotText(data[0]);
-    addMessage(clean, "bot", true);
+    // Bot reply
+    addBotMessage(data.model_response);
+    playBotAudio();
 }
 
-/* Send text */
-document.getElementById("sendBtn").onclick = async () => {
-    const text = document.getElementById("promptInput").value.trim();
-    if (!text) return;
+async function playBotAudio() {
+    const audio = document.getElementById("botAudio");
+    const res = await fetch("/text_to_speech", { method: "POST" });
 
-    addMessage(text, "user");
-
-    const formData = new FormData();
-    formData.append("prompt", text);
-
-    const res = await fetch("/llm", { method: "POST", body: formData });
-    let reply = await res.text();
-
-    let clean = formatBotText(reply);
-    addMessage(clean, "bot", true);
-
-    document.getElementById("promptInput").value = "";
-};
+    const blob = await res.blob();
+    audio.src = URL.createObjectURL(blob);
+    audio.play();
+}
 </script>
 
 </body>

@@ -1,2 +1,5 @@
-.env
-__pycache__/
+*
+!home.html
+!main2.py
+!requirements.txt
+!.gitignore
